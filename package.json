@@ -1,0 +1,19 @@
+{
+  "name": "splitduplex",
+  "version": "0.0.0",
+  "description": "Duplex Stream with an independent input and output for pipe()",
+  "main": "split_duplex.js",
+  "dependencies": {
+    "jsprim": "^1.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/joyent/node-splitduplex.git"
+  },
+  "author": "Joyent, Inc",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/joyent/node-splitduplex/issues"
+  },
+  "homepage": "https://github.com/joyent/node-splitduplex#readme"
+}
