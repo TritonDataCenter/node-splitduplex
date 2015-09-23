@@ -19,13 +19,13 @@ SplitDuplex(options)
 	var pt_opts = mod_jsprim.mergeObjects(options, {
 		highWaterMark: 0
 	}, null);
-	self.spld_in = new mod_stream.PassThrough(pt_opts);
-	self.spld_out = new mod_stream.PassThrough(pt_opts);
+	self.spld_writeside = new mod_stream.PassThrough(pt_opts);
+	self.spld_readside = new mod_stream.PassThrough(pt_opts);
 
 	self.spld_read_active = false;
-	self.spld_need_data = false;
+	self.spld_data_needed = false;
 	self.spld_data_avail = false;
-	self.spld_out.on('readable', function () {
+	self.spld_readside.on('readable', function () {
 		/*
 		 * Data is available to be read on our Readable side, from
 		 * the underlying output stream.
@@ -33,7 +33,7 @@ SplitDuplex(options)
 		self.spld_data_avail = true;
 		self._service_read();
 	});
-	self.spld_out.once('end', function () {
+	self.spld_readside.once('end', function () {
 		self.push(null);
 	});
 
@@ -43,21 +43,29 @@ SplitDuplex(options)
 		 * end of its input stream; propagate this condition to
 		 * the underlying input stream.
 		 */
-		self.spld_in.end();
+		self.spld_writeside.end();
 	});
 }
 mod_util.inherits(SplitDuplex, mod_stream.Duplex);
 
-SplitDuplex.prototype.streamInput = function
-streamInput()
+/*
+ * The "write side" of the stream is a Readable, from which everything that is
+ * written to the SplitDuplex may be read.
+ */
+SplitDuplex.prototype.streamWriteSide = function
+streamWriteSide()
 {
-	return (this.spld_in);
+	return (this.spld_writeside);
 };
 
-SplitDuplex.prototype.streamOutput = function
-streamOutput()
+/*
+ * The "read side" of the stream is a Writable.  Data to be read from the
+ * SplitDuplex should be written to this side.
+ */
+SplitDuplex.prototype.streamReadSide = function
+streamReadSide()
 {
-	return (this.spld_out);
+	return (this.spld_readside);
 };
 
 SplitDuplex.prototype._read = function
@@ -66,7 +74,7 @@ _read()
 	/*
 	 * Our consumer has requested data from our Readable (output) side.
 	 */
-	this.spld_need_data = true;
+	this.spld_data_needed = true;
 	this._service_read();
 };
 
@@ -78,7 +86,7 @@ _service_read()
 	 * that the Duplex itself is being read from; otherwise there is no
 	 * need to move data.
 	 */
-	if (!this.spld_need_data || !this.spld_data_avail) {
+	if (!this.spld_data_needed || !this.spld_data_avail) {
 		return;
 	}
 
@@ -91,7 +99,7 @@ _service_read()
 	this.spld_read_active = true;
 
 	for (;;) {
-		var input = this.spld_out.read();
+		var input = this.spld_readside.read();
 
 		if (input === null) {
 			/*
@@ -118,7 +126,8 @@ _service_read()
 SplitDuplex.prototype._write = function
 _write(ch, enc, done)
 {
-	return (this.spld_in.write.apply(this.spld_in, arguments));
+	return (this.spld_writeside.write.apply(this.spld_writeside,
+	    arguments));
 };
 
 module.exports = SplitDuplex;
